@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   discord-bot:
     # 使用 GitHub Container Registry 上的映像
