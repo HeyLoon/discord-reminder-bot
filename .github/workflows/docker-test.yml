@@ -26,7 +26,7 @@ jobs:
       - name: 設定 Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: '24'
+          node-version: '25'
           cache: 'npm'
       
       - name: 檢查程式碼語法
@@ -46,10 +46,8 @@ jobs:
           platforms: linux/amd64
           push: false
           tags: discord-reminder-bot:test
-          # Temporarily disable cache to fix stale cache issue
-          # cache-from: type=gha
-          # cache-to: type=gha,mode=max
-          no-cache: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       
       - name: 產生測試摘要
         run: |
