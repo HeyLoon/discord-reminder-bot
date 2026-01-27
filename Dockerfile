@@ -1,7 +1,7 @@
 # ============================================
 # 階段 1: 依賴安裝
 # ============================================
-FROM node:24-alpine AS deps
+FROM node:25-alpine AS deps
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ RUN npm ci --only=production && \
 # ============================================
 # 階段 2: 執行環境
 # ============================================
-FROM node:24-alpine AS runner
+FROM node:25-alpine AS runner
 
 WORKDIR /app
 
