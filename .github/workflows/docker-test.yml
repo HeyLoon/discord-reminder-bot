@@ -46,8 +46,10 @@ jobs:
           platforms: linux/amd64
           push: false
           tags: discord-reminder-bot:test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Temporarily disable cache to fix stale cache issue
+          # cache-from: type=gha
+          # cache-to: type=gha,mode=max
+          no-cache: true
       
       - name: 產生測試摘要
         run: |
