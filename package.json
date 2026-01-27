@@ -31,7 +31,7 @@
     "axios": "^1.13.3",
     "discord.js": "^14.14.1",
     "dotenv": "^17.2.3",
-    "moment-timezone": "^0.5.45",
+    "moment-timezone": "^0.6.0",
     "node-cron": "^3.0.3",
     "unofficial-jisho-api": "^2.3.4"
   }
