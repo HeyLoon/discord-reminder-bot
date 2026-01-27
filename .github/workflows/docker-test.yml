@@ -1,0 +1,59 @@
+name: Docker 建置測試
+
+on:
+  # Pull Request 時觸發
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '**.js'
+      - 'package*.json'
+      - 'Dockerfile'
+      - 'docker-compose*.yml'
+      - '.github/workflows/docker-*.yml'
+  
+  # 允許手動觸發
+  workflow_dispatch:
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout 程式碼
+        uses: actions/checkout@v4
+      
+      - name: 設定 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      
+      - name: 檢查程式碼語法
+        run: |
+          npm ci
+          node -c bot.js
+          node -c game-monitor.js
+          node -c daily-word.js
+      
+      - name: 設定 Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: 建置 Docker 映像（僅 amd64，加速測試）
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64
+          push: false
+          tags: discord-reminder-bot:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: 產生測試摘要
+        run: |
+          echo "## ✅ Docker 建置測試通過！" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Node.js 語法檢查通過" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Docker 映像建置成功" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "合併後將會自動建置多架構映像並推送到 GitHub Container Registry。" >> $GITHUB_STEP_SUMMARY

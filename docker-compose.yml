@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  discord-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: discord-reminder-bot
+    restart: unless-stopped
+    
+    # 環境變數（從 .env 檔案讀取）
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - CLIENT_ID=${CLIENT_ID}
+      - GUILD_ID=${GUILD_ID}
+      - UNSPLASH_ACCESS_KEY=${UNSPLASH_ACCESS_KEY:-}
+      - TZ=${TZ:-Asia/Taipei}
+      - DATA_DIR=/app/data
+      - NODE_ENV=production
+    
+    # Volume 掛載（持久化資料）
+    volumes:
+      - bot-data:/app/data
+    
+    # 健康檢查
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "node bot.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # 日誌配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Named volume 定義
+volumes:
+  bot-data:
+    driver: local
