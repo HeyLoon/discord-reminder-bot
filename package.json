@@ -1,6 +1,6 @@
 {
   "name": "discord-reminder-bot",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Discord 提醒機器人 - 提醒系統、每日日文單字、遊戲時間監控",
   "main": "bot.js",
   "scripts": {
