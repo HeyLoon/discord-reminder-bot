@@ -11,9 +11,13 @@ yarn-error.log*
 !.env.docker
 
 # Runtime data files (user-specific, will be in volume)
-*.json
-!package.json
-!package-lock.json
+# Exclude specific JSON files instead of all .json files
+reminders.json
+config.json
+game-monitor.json
+word-config.json
+word-history.json
+tsconfig.json
 
 # Git files
 .git
