@@ -106,25 +106,25 @@ function buildCommands() {
                             .setName('list')
                             .setDescription('列出所有權限角色'))),
 
-        // Daily Word
+        // Stock Reminder
         new SlashCommandBuilder()
-            .setName('daily-word')
-            .setDescription('每日日文單字功能')
+            .setName('stock-reminder')
+            .setDescription('股市 + 單字整合提醒功能')
             .addSubcommand(subcommand =>
                 subcommand
                     .setName('setup')
-                    .setDescription('設置每日單字功能')
+                    .setDescription('設置整合提醒功能')
                     .addChannelOption(option =>
                         option.setName('頻道')
-                            .setDescription('發送單字的頻道')
+                            .setDescription('發送提醒的頻道')
                             .setRequired(true))
                     .addStringOption(option =>
                         option.setName('時間')
-                            .setDescription('發送時間 (格式: HH:mm，例如: 09:00，預設 09:00)')
+                            .setDescription('發送時間 (格式: HH:mm，例如: 08:30，預設 08:30)')
                             .setRequired(false))
                     .addStringOption(option =>
                         option.setName('難度')
-                            .setDescription('JLPT 難度等級')
+                            .setDescription('單字頁 JLPT 難度等級')
                             .addChoices(
                                 { name: '全部等級', value: 'all' },
                                 { name: 'N5 (初級)', value: 'n5' },
@@ -141,15 +141,11 @@ function buildCommands() {
             .addSubcommand(subcommand =>
                 subcommand
                     .setName('send-now')
-                    .setDescription('立即發送一個隨機單字（測試用）'))
+                    .setDescription('立即發送一則財經提醒（測試用）'))
             .addSubcommand(subcommand =>
                 subcommand
                     .setName('status')
-                    .setDescription('查看每日單字功能狀態'))
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('toggle')
-                    .setDescription('開啟/關閉每日單字功能'))
+                    .setDescription('查看整合提醒功能狀態'))
             .addSubcommand(subcommand =>
                 subcommand
                     .setName('history')
@@ -157,40 +153,11 @@ function buildCommands() {
             .addSubcommand(subcommand =>
                 subcommand
                     .setName('reset-history')
-                    .setDescription('清空單字歷史記錄（單字會重新開始循環）')),
-
-        // Stock Reminder
-        new SlashCommandBuilder()
-            .setName('stock-reminder')
-            .setDescription('股市財經提醒功能')
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('setup')
-                    .setDescription('設置股市提醒功能')
-                    .addChannelOption(option =>
-                        option.setName('頻道')
-                            .setDescription('發送提醒的頻道')
-                            .setRequired(true))
-                    .addStringOption(option =>
-                        option.setName('時間')
-                            .setDescription('發送時間 (格式: HH:mm，例如: 08:30，預設 08:30)')
-                            .setRequired(false))
-                    .addUserOption(option =>
-                        option.setName('用戶')
-                            .setDescription('要提及的用戶（可選）')
-                            .setRequired(false)))
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('send-now')
-                    .setDescription('立即發送一則財經提醒（測試用）'))
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('status')
-                    .setDescription('查看股市提醒功能狀態'))
+                    .setDescription('清空單字歷史記錄（單字會重新開始循環）'))
             .addSubcommand(subcommand =>
                 subcommand
                     .setName('toggle')
-                    .setDescription('開啟/關閉股市提醒功能')),
+                    .setDescription('開啟/關閉整合提醒功能')),
 
         // Game Monitor
         new SlashCommandBuilder()

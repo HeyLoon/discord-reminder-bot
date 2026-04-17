@@ -123,10 +123,6 @@ GUILD_ID=your_guild_id_here
 ### 選填變數
 
 ```env
-# Unsplash API 金鑰（選填，用於每日日文單字功能的圖片）
-# 取得位置：https://unsplash.com/developers
-UNSPLASH_ACCESS_KEY=
-
 # 時區設定（選填，預設：Asia/Taipei）
 TZ=Asia/Taipei
 ```
