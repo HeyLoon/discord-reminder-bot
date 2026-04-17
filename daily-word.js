@@ -16,6 +16,43 @@ const MAX_RETRY = 3;
 const RETRY_DELAY = 2000; // 2 秒
 const EMBED_COLOR = '#FF6B81'; // 粉紅色
 const jisho = new JishoAPI();
+const CHALLENGING_LEVELS = new Set(['n1', 'n2', 'n3']);
+const JLPT_DIFFICULTY_RANK = {
+    n1: 1,
+    n2: 2,
+    n3: 3,
+    n4: 4,
+    n5: 5
+};
+
+function normalizeJlptTags(jlptTags = []) {
+    return jlptTags
+        .map(tag => tag.toLowerCase().replace('jlpt-', '').trim())
+        .filter(tag => JLPT_DIFFICULTY_RANK[tag]);
+}
+
+function isChallengingLevel(level) {
+    return CHALLENGING_LEVELS.has(level);
+}
+
+function isAdvancedWordCandidate(word, targetLevel) {
+    const tags = normalizeJlptTags(word.jlpt || []);
+    if (tags.length === 0 || !tags.includes(targetLevel)) {
+        return false;
+    }
+    
+    // 只保留「目標等級或更難」的標籤，避免 N1-N3 混入 N4/N5 偏簡單詞
+    const onlyTargetOrHarder = tags.every(tag =>
+        JLPT_DIFFICULTY_RANK[tag] <= JLPT_DIFFICULTY_RANK[targetLevel]
+    );
+    
+    if (!onlyTargetOrHarder) {
+        return false;
+    }
+    
+    // N1-N3 優先使用有漢字寫法的詞，降低過於基礎的純假名詞比例
+    return Boolean(word.japanese?.[0]?.word);
+}
 
 // ==================== 配置管理 ====================
 
@@ -137,12 +174,17 @@ function delay(ms) {
 // 從 Jisho API 獲取隨機單字
 async function fetchRandomWord(jlptLevel = 'all', excludeWords = [], retryCount = 0) {
     try {
+        const normalizedLevel = (jlptLevel || 'all').toLowerCase();
+        const useChallengingFilter = isChallengingLevel(normalizedLevel);
+        
         // 構建搜尋查詢
         let searchQuery = '#common';
         
         // 添加 JLPT 等級過濾
-        if (jlptLevel !== 'all') {
-            searchQuery += ` #jlpt-${jlptLevel}`;
+        if (normalizedLevel !== 'all') {
+            searchQuery = useChallengingFilter
+                ? `#jlpt-${normalizedLevel}`
+                : `${searchQuery} #jlpt-${normalizedLevel}`;
         }
         
         console.log(`[Daily Word] 搜尋單字: ${searchQuery}`);
@@ -154,12 +196,25 @@ async function fetchRandomWord(jlptLevel = 'all', excludeWords = [], retryCount 
             throw new Error('未找到任何單字');
         }
         
-        // 過濾常用單字
-        let words = result.data.filter(w => w.is_common);
+        let words = result.data;
         
-        // 如果沒有常用單字，使用所有結果
-        if (words.length === 0) {
-            words = result.data;
+        // N4/N5/全部優先常用詞；N1-N3 不使用 common 偏好，避免過於基礎
+        if (!useChallengingFilter) {
+            words = result.data.filter(w => w.is_common);
+            
+            if (words.length === 0) {
+                words = result.data;
+            }
+        } else {
+            const advancedWords = words.filter(w => isAdvancedWordCandidate(w, normalizedLevel));
+            
+            if (advancedWords.length > 0) {
+                words = advancedWords;
+            } else {
+                // 若條件過嚴，退回僅限目標等級，避免沒有可用單字
+                console.log('[Daily Word] 進階過濾後無結果，退回 JLPT 等級過濾');
+                words = words.filter(w => normalizeJlptTags(w.jlpt || []).includes(normalizedLevel));
+            }
         }
         
         // 過濾已發送的單字
@@ -181,12 +236,13 @@ async function fetchRandomWord(jlptLevel = 'all', excludeWords = [], retryCount 
         const selectedWord = words[randomIndex];
         
         // 提取單字資訊
+        const jlptTags = normalizeJlptTags(selectedWord.jlpt || []);
         const wordData = {
             word: selectedWord.japanese[0]?.word || selectedWord.japanese[0]?.reading,
             reading: selectedWord.japanese[0]?.reading || '',
             meanings: selectedWord.senses[0]?.english_definitions || [],
             partsOfSpeech: selectedWord.senses[0]?.parts_of_speech || [],
-            jlptLevel: selectedWord.jlpt[0] || 'N/A',
+            jlptLevel: jlptTags.length > 0 ? jlptTags.map(tag => tag.toUpperCase()).join(', ') : 'N/A',
             isCommon: selectedWord.is_common
         };
         

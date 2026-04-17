@@ -162,6 +162,7 @@ Volume 包含以下檔案：
 - `game-monitor.json` - 遊戲監控資料
 - `word-config.json` - 每日單字配置
 - `word-history.json` - 單字歷史記錄
+- `stock-config.json` - 股市提醒配置
 
 ---
 

@@ -17,6 +17,7 @@ config.json
 game-monitor.json
 word-config.json
 word-history.json
+stock-config.json
 tsconfig.json
 
 # Git files

@@ -4,6 +4,7 @@ const moment = require('moment-timezone');
 const fs = require('fs');
 const path = require('path');
 const dailyWord = require('./daily-word.js');
+const stockReminder = require('./stock-reminder.js');
 const gameMonitor = require('./game-monitor.js');
 
 // 載入環境變數
@@ -969,6 +970,149 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
+    // ===== Stock Reminder Commands =====
+    else if (commandName === 'stock-reminder') {
+        const subcommand = interaction.options.getSubcommand();
+
+        if (subcommand === 'setup') {
+            if (!hasPermission(interaction)) {
+                return interaction.reply({ content: '❌ 你沒有權限使用此指令！', ephemeral: true });
+            }
+
+            const channel = interaction.options.getChannel('頻道');
+            const timeStr = interaction.options.getString('時間') || '08:30';
+            const mentionUser = interaction.options.getUser('用戶');
+
+            const timeRegex = /^\d{1,2}:\d{1,2}$/;
+            if (!timeRegex.test(timeStr)) {
+                return interaction.reply({
+                    content: '❌ 時間格式錯誤！請使用 HH:mm 或 H:m 格式，例如: 08:30, 8:3',
+                    ephemeral: true
+                });
+            }
+
+            const timeParts = timeStr.split(':');
+            const hour = String(parseInt(timeParts[0])).padStart(2, '0');
+            const minute = String(parseInt(timeParts[1])).padStart(2, '0');
+            const formattedTime = `${hour}:${minute}`;
+
+            const guildConfig = getGuildConfig(interaction.guildId);
+            const timezone = guildConfig.timezone || 'Asia/Taipei';
+
+            stockReminder.updateGuildStockConfig(interaction.guildId, {
+                enabled: true,
+                channelId: channel.id,
+                sendTime: formattedTime,
+                mentionUserId: mentionUser ? mentionUser.id : null,
+                timezone: timezone
+            });
+
+            await interaction.reply({
+                content: `✅ 股市提醒功能已設置！\n` +
+                         `📍 頻道: ${channel}\n` +
+                         `⏰ 時間: ${formattedTime} (${timezone})\n` +
+                         `${mentionUser ? `👤 提及: ${mentionUser}\n` : ''}` +
+                         `📌 內容: 國際時事(精簡列表) + 指數焦點(emoji漲跌, 含日經/上證) + 前一交易日台股收盤\n` +
+                         `\n正在發送測試提醒...`,
+                ephemeral: true
+            });
+
+            const config = stockReminder.getGuildStockConfig(interaction.guildId);
+            const result = await stockReminder.sendStockReminder(client, interaction.guildId, channel.id, config, true);
+
+            if (result.success) {
+                await interaction.followUp({
+                    content: '✅ 測試財經提醒發送成功！',
+                    ephemeral: true
+                });
+            } else {
+                await interaction.followUp({
+                    content: `⚠️ 測試財經提醒發送失敗: ${result.error}\n請檢查網路連接或稍後重試。`,
+                    ephemeral: true
+                });
+            }
+        }
+
+        else if (subcommand === 'send-now') {
+            if (!hasPermission(interaction)) {
+                return interaction.reply({ content: '❌ 你沒有權限使用此指令！', ephemeral: true });
+            }
+
+            const config = stockReminder.getGuildStockConfig(interaction.guildId);
+            if (!config.enabled || !config.channelId) {
+                return interaction.reply({
+                    content: '❌ 尚未設置股市提醒功能！請先使用 `/stock-reminder setup` 進行設置。',
+                    ephemeral: true
+                });
+            }
+
+            await interaction.reply({
+                content: '⏳ 正在整理並發送財經提醒...',
+                ephemeral: true
+            });
+
+            const result = await stockReminder.sendStockReminder(client, interaction.guildId, config.channelId, config, true);
+            if (result.success) {
+                await interaction.editReply({ content: '✅ 財經提醒發送成功！' });
+            } else {
+                await interaction.editReply({ content: `❌ 財經提醒發送失敗: ${result.error}` });
+            }
+        }
+
+        else if (subcommand === 'status') {
+            const config = stockReminder.getGuildStockConfig(interaction.guildId);
+            if (!config.enabled) {
+                return interaction.reply({
+                    content: '❌ 股市提醒功能尚未啟用。請使用 `/stock-reminder setup` 進行設置。',
+                    ephemeral: true
+                });
+            }
+
+            const channel = await client.channels.fetch(config.channelId).catch(() => null);
+            const channelName = channel ? `<#${channel.id}>` : '頻道不存在';
+
+            const embed = new EmbedBuilder()
+                .setColor('#2ECC71')
+                .setTitle('📈 股市提醒狀態')
+                .addFields(
+                    { name: '📊 狀態', value: config.enabled ? '✅ 已啟用' : '❌ 已停用', inline: true },
+                    { name: '📍 頻道', value: channelName, inline: true },
+                    { name: '⏰ 發送時間', value: `${config.sendTime} (${config.timezone})`, inline: true },
+                    { name: '📌 內容', value: '國際時事(精簡列表) + 指數焦點(emoji漲跌, 含日經/上證) + 前一交易日台股收盤', inline: false },
+                    { name: '📈 已發送', value: `${config.totalSent || 0} 則提醒`, inline: true },
+                    { name: '📅 最後發送', value: config.lastSentDate || '尚未發送', inline: true }
+                );
+
+            if (config.mentionUserId) {
+                embed.addFields({ name: '👤 提及用戶', value: `<@${config.mentionUserId}>` });
+            }
+
+            await interaction.reply({ embeds: [embed], ephemeral: true });
+        }
+
+        else if (subcommand === 'toggle') {
+            if (!hasPermission(interaction)) {
+                return interaction.reply({ content: '❌ 你沒有權限使用此指令！', ephemeral: true });
+            }
+
+            const config = stockReminder.getGuildStockConfig(interaction.guildId);
+            if (!config.channelId) {
+                return interaction.reply({
+                    content: '❌ 尚未設置股市提醒功能！請先使用 `/stock-reminder setup` 進行設置。',
+                    ephemeral: true
+                });
+            }
+
+            const newStatus = !config.enabled;
+            stockReminder.updateGuildStockConfig(interaction.guildId, { enabled: newStatus });
+
+            await interaction.reply({
+                content: `✅ 股市提醒功能已${newStatus ? '開啟' : '關閉'}！`,
+                ephemeral: true
+            });
+        }
+    }
+
     // ===== Game Monitor Commands =====
     else if (commandName === 'game-monitor') {
         const subcommand = interaction.options.getSubcommand();
@@ -1499,6 +1643,39 @@ async function registerSlashCommands() {
                     subcommand
                         .setName('reset-history')
                         .setDescription('清空單字歷史記錄（單字會重新開始循環）')),
+
+            // Stock Reminder
+            new SlashCommandBuilder()
+                .setName('stock-reminder')
+                .setDescription('股市財經提醒功能')
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('setup')
+                        .setDescription('設置股市提醒功能')
+                        .addChannelOption(option =>
+                            option.setName('頻道')
+                                .setDescription('發送提醒的頻道')
+                                .setRequired(true))
+                        .addStringOption(option =>
+                            option.setName('時間')
+                                .setDescription('發送時間 (格式: HH:mm，例如: 08:30，預設 08:30)')
+                                .setRequired(false))
+                        .addUserOption(option =>
+                            option.setName('用戶')
+                                .setDescription('要提及的用戶（可選）')
+                                .setRequired(false)))
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('send-now')
+                        .setDescription('立即發送一則財經提醒（測試用）'))
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('status')
+                        .setDescription('查看股市提醒功能狀態'))
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('toggle')
+                        .setDescription('開啟/關閉股市提醒功能')),
             
             // Game Monitor
             new SlashCommandBuilder()
@@ -1580,7 +1757,7 @@ async function registerSlashCommands() {
         );
 
         console.log(`✅ 成功註冊 ${data.length} 個斜線指令！`);
-        console.log('指令列表: /reminder, /settings, /daily-word, /game-monitor');
+        console.log('指令列表: /reminder, /settings, /daily-word, /stock-reminder, /game-monitor');
         
     } catch (error) {
         console.error('❌ 註冊指令時出錯:', error.message);
@@ -1604,6 +1781,9 @@ client.on('ready', async () => {
         
         // 檢查每日單字
         await dailyWord.checkDailyWordSchedules(client);
+
+        // 檢查股市提醒
+        await stockReminder.checkStockReminderSchedules(client);
         
         // 檢查遊戲監控
         await gameMonitor.checkGameMonitors(client);

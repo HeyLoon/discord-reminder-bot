@@ -159,6 +159,39 @@ const commands = [
             subcommand
                 .setName('reset-history')
                 .setDescription('清空單字歷史記錄（單字會重新開始循環）')),
+
+    // Stock Reminder
+    new SlashCommandBuilder()
+        .setName('stock-reminder')
+        .setDescription('股市財經提醒功能')
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('setup')
+                .setDescription('設置股市提醒功能')
+                .addChannelOption(option =>
+                    option.setName('頻道')
+                        .setDescription('發送提醒的頻道')
+                        .setRequired(true))
+                .addStringOption(option =>
+                    option.setName('時間')
+                        .setDescription('發送時間 (格式: HH:mm，例如: 08:30，預設 08:30)')
+                        .setRequired(false))
+                .addUserOption(option =>
+                    option.setName('用戶')
+                        .setDescription('要提及的用戶（可選）')
+                        .setRequired(false)))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('send-now')
+                .setDescription('立即發送一則財經提醒（測試用）'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('status')
+                .setDescription('查看股市提醒功能狀態'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('toggle')
+                .setDescription('開啟/關閉股市提醒功能')),
     
     // Game Monitor
     new SlashCommandBuilder()
