@@ -18,6 +18,11 @@ services:
     # Volume 掛載（持久化資料）
     volumes:
       - bot-data:/app/data
+
+    # DNS（降低 EAI_AGAIN 機率）
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     
     # 健康檢查
     healthcheck:

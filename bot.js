@@ -1544,4 +1544,24 @@ client.on("clientReady", async () => {
   checkReminders();
 });
 
-client.login(process.env.DISCORD_TOKEN);
+const LOGIN_RETRY_MS = 10000;
+
+async function loginWithRetry() {
+  while (true) {
+    try {
+      await client.login(process.env.DISCORD_TOKEN);
+      return;
+    } catch (error) {
+      if (error?.code !== "EAI_AGAIN") {
+        throw error;
+      }
+      console.error("⚠️ Discord DNS 解析失敗，準備重試:", error.message);
+      await new Promise((resolve) => setTimeout(resolve, LOGIN_RETRY_MS));
+    }
+  }
+}
+
+loginWithRetry().catch((error) => {
+  console.error("❌ 機器人啟動失敗:", error);
+  process.exit(1);
+});
