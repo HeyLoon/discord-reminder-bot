@@ -284,14 +284,15 @@ client.on("interactionCreate", async (interaction) => {
     const page = stockReminder.getStockWordPageFromCustomId(
       interaction.customId,
     );
-    const pagePayload = stockReminder.getStockWordPageResponse(
-      interaction.message.id,
+    const pagePayload = await stockReminder.getStockWordPageResponseWithFallback(
+      interaction.message,
       page,
+      interaction.guildId,
     );
     if (!pagePayload) {
       return interaction.reply({
         content:
-          "⚠️ 這則提醒已過期，請使用 `/stock-reminder send-now` 重新產生。",
+          "⚠️ 無法切換頁面，請使用 `/stock-reminder send-now` 重新產生。",
         flags: MessageFlags.Ephemeral,
       });
     }

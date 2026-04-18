@@ -21,7 +21,9 @@ const INTERNATIONAL_ITEMS = 7;
 const STOCK_WORD_PAGE_PREFIX = "stock-word-page:";
 const STOCK_PAGE = "stock";
 const WORD_PAGE = "word";
-const STOCK_WORD_PAGE_TTL_MS = 24 * 60 * 60 * 1000;
+const STOCK_WORD_PAGES_FILE = path.join(DATA_DIR, "stock-word-pages.json");
+const STOCK_WORD_PAGE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const MAX_STOCK_WORD_PAGE_ENTRIES = 2000;
 const stockWordPageStore = new Map();
 
 function loadJsonWithDefault(filePath, defaultFactory) {
@@ -795,12 +797,68 @@ function buildStockWordPager(page) {
   ];
 }
 
+function persistStockWordStore() {
+  const entries = Array.from(stockWordPageStore.entries()).map(
+    ([messageId, value]) => ({
+      messageId,
+      createdAt: value.createdAt,
+      pages: value.pages,
+    }),
+  );
+
+  fs.writeFileSync(
+    STOCK_WORD_PAGES_FILE,
+    JSON.stringify({ version: "1.0", entries }, null, 2),
+  );
+}
+
+function hydrateStockWordStore() {
+  const data = loadJsonWithDefault(STOCK_WORD_PAGES_FILE, () => ({
+    version: "1.0",
+    entries: [],
+  }));
+
+  if (!Array.isArray(data.entries)) {
+    return;
+  }
+
+  for (const entry of data.entries) {
+    if (!entry?.messageId || !entry?.pages?.[STOCK_PAGE] || !entry?.pages?.[WORD_PAGE]) {
+      continue;
+    }
+    stockWordPageStore.set(entry.messageId, {
+      createdAt: Number(entry.createdAt) || Date.now(),
+      pages: {
+        [STOCK_PAGE]: entry.pages[STOCK_PAGE],
+        [WORD_PAGE]: entry.pages[WORD_PAGE],
+      },
+    });
+  }
+}
+
 function cleanupStockWordStore() {
   const now = Date.now();
+  let changed = false;
   for (const [messageId, value] of stockWordPageStore.entries()) {
     if (now - value.createdAt > STOCK_WORD_PAGE_TTL_MS) {
       stockWordPageStore.delete(messageId);
+      changed = true;
     }
+  }
+
+  if (stockWordPageStore.size > MAX_STOCK_WORD_PAGE_ENTRIES) {
+    const sorted = Array.from(stockWordPageStore.entries()).sort(
+      (a, b) => a[1].createdAt - b[1].createdAt,
+    );
+    const removeCount = stockWordPageStore.size - MAX_STOCK_WORD_PAGE_ENTRIES;
+    for (const [messageId] of sorted.slice(0, removeCount)) {
+      stockWordPageStore.delete(messageId);
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    persistStockWordStore();
   }
 }
 
@@ -813,6 +871,7 @@ function saveStockWordPages(messageId, stockEmbed, wordEmbed) {
       [WORD_PAGE]: wordEmbed.toJSON(),
     },
   });
+  persistStockWordStore();
 }
 
 function isStockWordPageButton(customId) {
@@ -838,6 +897,56 @@ function getStockWordPageResponse(messageId, page) {
     embeds: [EmbedBuilder.from(entry.pages[page])],
     components: buildStockWordPager(page),
   };
+}
+
+function embedToJson(embed) {
+  if (!embed) {
+    return null;
+  }
+  return typeof embed.toJSON === "function" ? embed.toJSON() : embed;
+}
+
+async function getStockWordPageResponseWithFallback(message, page, guildId) {
+  const cached = getStockWordPageResponse(message.id, page);
+  if (cached) {
+    return cached;
+  }
+
+  const currentEmbedJson = embedToJson(message.embeds?.[0]);
+  if (!currentEmbedJson) {
+    return null;
+  }
+
+  const stockConfig = getGuildStockConfig(guildId);
+  const timezone = stockConfig.timezone || DEFAULT_TIMEZONE;
+
+  if (page === WORD_PAGE) {
+    const wordConfig = dailyWord.getGuildWordConfig(guildId);
+    const mergedWordConfig = { ...wordConfig, timezone };
+    const { embed: wordEmbed } = await dailyWord.generateDailyWordPayload(
+      guildId,
+      mergedWordConfig,
+    );
+    saveStockWordPages(
+      message.id,
+      EmbedBuilder.from(currentEmbedJson),
+      wordEmbed,
+    );
+    return getStockWordPageResponse(message.id, page);
+  }
+
+  if (page === STOCK_PAGE) {
+    const digest = await fetchFinanceDigest();
+    const stockEmbed = buildStockReminderEmbed(digest, timezone);
+    saveStockWordPages(
+      message.id,
+      stockEmbed,
+      EmbedBuilder.from(currentEmbedJson),
+    );
+    return getStockWordPageResponse(message.id, page);
+  }
+
+  return null;
 }
 
 async function sendStockReminder(
@@ -944,12 +1053,16 @@ async function checkStockReminderSchedules(client) {
   }
 }
 
+hydrateStockWordStore();
+cleanupStockWordStore();
+
 module.exports = {
   getGuildStockConfig,
   updateGuildStockConfig,
   isStockWordPageButton,
   getStockWordPageFromCustomId,
   getStockWordPageResponse,
+  getStockWordPageResponseWithFallback,
   sendStockReminder,
   checkStockReminderSchedules,
 };
