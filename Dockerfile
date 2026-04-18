@@ -31,6 +31,7 @@ COPY --from=deps --chown=botuser:botuser /app/node_modules ./node_modules
 
 # 複製應用程式碼
 COPY --chown=botuser:botuser *.js ./
+COPY --chown=botuser:botuser src ./src
 COPY --chown=botuser:botuser package.json ./
 COPY --chown=botuser:botuser README.md ./
 
