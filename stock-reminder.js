@@ -24,6 +24,27 @@ const WORD_PAGE = "word";
 const STOCK_WORD_PAGE_TTL_MS = 24 * 60 * 60 * 1000;
 const stockWordPageStore = new Map();
 
+function loadJsonWithDefault(filePath, defaultFactory) {
+  if (!fs.existsSync(filePath)) {
+    return defaultFactory();
+  }
+
+  const data = fs.readFileSync(filePath, "utf8").trim();
+  if (!data) {
+    const defaultValue = defaultFactory();
+    fs.writeFileSync(filePath, JSON.stringify(defaultValue, null, 2));
+    return defaultValue;
+  }
+
+  try {
+    return JSON.parse(data);
+  } catch (error) {
+    throw new Error(
+      `Invalid JSON in ${filePath}: ${error.message}. Please fix the file content.`,
+    );
+  }
+}
+
 const FINANCE_FEEDS = {
   international: [
     "https://news.google.com/rss/search?q=%E5%9C%8B%E9%9A%9B+%E8%B2%A1%E7%B6%93&hl=zh-TW&gl=TW&ceid=TW:zh-Hant",
@@ -57,11 +78,7 @@ function delay(ms) {
 }
 
 function loadStockConfig() {
-  if (fs.existsSync(STOCK_CONFIG_FILE)) {
-    const data = fs.readFileSync(STOCK_CONFIG_FILE, "utf8");
-    return JSON.parse(data);
-  }
-  return { version: "1.0", guilds: {} };
+  return loadJsonWithDefault(STOCK_CONFIG_FILE, () => ({ version: "1.0", guilds: {} }));
 }
 
 function saveStockConfig(config) {

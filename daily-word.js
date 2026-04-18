@@ -24,6 +24,27 @@ const JLPT_DIFFICULTY_RANK = {
   n5: 5,
 };
 
+function loadJsonWithDefault(filePath, defaultFactory) {
+  if (!fs.existsSync(filePath)) {
+    return defaultFactory();
+  }
+
+  const data = fs.readFileSync(filePath, "utf8").trim();
+  if (!data) {
+    const defaultValue = defaultFactory();
+    fs.writeFileSync(filePath, JSON.stringify(defaultValue, null, 2));
+    return defaultValue;
+  }
+
+  try {
+    return JSON.parse(data);
+  } catch (error) {
+    throw new Error(
+      `Invalid JSON in ${filePath}: ${error.message}. Please fix the file content.`,
+    );
+  }
+}
+
 function normalizeJlptTags(jlptTags = []) {
   return jlptTags
     .map((tag) => tag.toLowerCase().replace("jlpt-", "").trim())
@@ -57,11 +78,7 @@ function isAdvancedWordCandidate(word, targetLevel) {
 
 // 讀取單字配置
 function loadWordConfig() {
-  if (fs.existsSync(WORD_CONFIG_FILE)) {
-    const data = fs.readFileSync(WORD_CONFIG_FILE, "utf8");
-    return JSON.parse(data);
-  }
-  return { version: "1.0", guilds: {} };
+  return loadJsonWithDefault(WORD_CONFIG_FILE, () => ({ version: "1.0", guilds: {} }));
 }
 
 // 保存單字配置
@@ -71,11 +88,7 @@ function saveWordConfig(config) {
 
 // 讀取單字歷史
 function loadWordHistory() {
-  if (fs.existsSync(WORD_HISTORY_FILE)) {
-    const data = fs.readFileSync(WORD_HISTORY_FILE, "utf8");
-    return JSON.parse(data);
-  }
-  return { version: "1.0", guilds: {} };
+  return loadJsonWithDefault(WORD_HISTORY_FILE, () => ({ version: "1.0", guilds: {} }));
 }
 
 // 保存單字歷史

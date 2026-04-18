@@ -35,13 +35,30 @@ const CONFIG_FILE = path.join(DATA_DIR, "config.json");
 
 // ==================== 數據管理 ====================
 
+function loadJsonWithDefault(filePath, defaultFactory) {
+  if (!fs.existsSync(filePath)) {
+    return defaultFactory();
+  }
+
+  const data = fs.readFileSync(filePath, "utf8").trim();
+  if (!data) {
+    const defaultValue = defaultFactory();
+    fs.writeFileSync(filePath, JSON.stringify(defaultValue, null, 2));
+    return defaultValue;
+  }
+
+  try {
+    return JSON.parse(data);
+  } catch (error) {
+    throw new Error(
+      `Invalid JSON in ${filePath}: ${error.message}. Please fix the file content.`,
+    );
+  }
+}
+
 // 讀取提醒數據
 function loadReminders() {
-  if (fs.existsSync(REMINDERS_FILE)) {
-    const data = fs.readFileSync(REMINDERS_FILE, "utf8");
-    return JSON.parse(data);
-  }
-  return [];
+  return loadJsonWithDefault(REMINDERS_FILE, () => []);
 }
 
 // 保存提醒數據
@@ -51,11 +68,7 @@ function saveReminders(reminders) {
 
 // 讀取配置
 function loadConfig() {
-  if (fs.existsSync(CONFIG_FILE)) {
-    const data = fs.readFileSync(CONFIG_FILE, "utf8");
-    return JSON.parse(data);
-  }
-  return { guilds: {}, version: "2.0" };
+  return loadJsonWithDefault(CONFIG_FILE, () => ({ guilds: {}, version: "2.0" }));
 }
 
 // 保存配置

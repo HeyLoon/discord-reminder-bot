@@ -11,6 +11,27 @@ const MONITOR_CONFIG_FILE = path.join(DATA_DIR, 'game-monitor.json');
 const GRACE_PERIOD_MINUTES = 30; // 寬限期：30 分鐘
 const EMBED_COLOR = '#FF6B6B'; // 警告紅色
 
+function loadJsonWithDefault(filePath, defaultFactory) {
+    if (!fs.existsSync(filePath)) {
+        return defaultFactory();
+    }
+
+    const data = fs.readFileSync(filePath, 'utf8').trim();
+    if (!data) {
+        const defaultValue = defaultFactory();
+        fs.writeFileSync(filePath, JSON.stringify(defaultValue, null, 2));
+        return defaultValue;
+    }
+
+    try {
+        return JSON.parse(data);
+    } catch (error) {
+        throw new Error(
+            `Invalid JSON in ${filePath}: ${error.message}. Please fix the file content.`
+        );
+    }
+}
+
 // ==================== 配置管理 ====================
 
 /**
@@ -18,11 +39,7 @@ const EMBED_COLOR = '#FF6B6B'; // 警告紅色
  * @returns {Object} 監控配置物件
  */
 function loadMonitorConfig() {
-    if (fs.existsSync(MONITOR_CONFIG_FILE)) {
-        const data = fs.readFileSync(MONITOR_CONFIG_FILE, 'utf8');
-        return JSON.parse(data);
-    }
-    return { version: '1.0', guilds: {} };
+    return loadJsonWithDefault(MONITOR_CONFIG_FILE, () => ({ version: '1.0', guilds: {} }));
 }
 
 /**
