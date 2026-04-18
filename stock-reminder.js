@@ -80,7 +80,10 @@ function delay(ms) {
 }
 
 function loadStockConfig() {
-  return loadJsonWithDefault(STOCK_CONFIG_FILE, () => ({ version: "1.0", guilds: {} }));
+  return loadJsonWithDefault(STOCK_CONFIG_FILE, () => ({
+    version: "1.0",
+    guilds: {},
+  }));
 }
 
 function saveStockConfig(config) {
@@ -737,7 +740,7 @@ function createInternationalNewsFields(items) {
     const value = shortLink ? `${title}（[原文](${shortLink})）` : title;
 
     return {
-      name: index === 0 ? "🌍 國際時事" : "↳",
+      name: index === 0 ? "🌍 國際時事" : " ",
       value: value.slice(0, 1024),
       inline: false,
     };
@@ -823,7 +826,11 @@ function hydrateStockWordStore() {
   }
 
   for (const entry of data.entries) {
-    if (!entry?.messageId || !entry?.pages?.[STOCK_PAGE] || !entry?.pages?.[WORD_PAGE]) {
+    if (
+      !entry?.messageId ||
+      !entry?.pages?.[STOCK_PAGE] ||
+      !entry?.pages?.[WORD_PAGE]
+    ) {
       continue;
     }
     stockWordPageStore.set(entry.messageId, {
