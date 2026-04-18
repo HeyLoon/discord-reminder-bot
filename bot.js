@@ -28,6 +28,14 @@ const client = new Client({
   ],
 });
 
+client.on("error", (error) => {
+  if (error?.code === "EAI_AGAIN") {
+    console.error("⚠️ Discord 連線暫時失敗（DNS），稍後會自動恢復:", error.message);
+    return;
+  }
+  console.error("❌ Discord Client 錯誤:", error);
+});
+
 // 支援 Docker volume 掛載
 const DATA_DIR = process.env.DATA_DIR || __dirname;
 const REMINDERS_FILE = path.join(DATA_DIR, "reminders.json");
