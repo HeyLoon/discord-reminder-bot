@@ -297,7 +297,18 @@ client.on("interactionCreate", async (interaction) => {
       });
     }
 
-    await interaction.update(pagePayload);
+    const isEphemeralSourceMessage = interaction.message.flags?.has(
+      MessageFlags.Ephemeral,
+    );
+
+    if (isEphemeralSourceMessage) {
+      await interaction.update(pagePayload);
+    } else {
+      await interaction.reply({
+        ...pagePayload,
+        flags: MessageFlags.Ephemeral,
+      });
+    }
     return;
   }
 
